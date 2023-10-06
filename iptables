@@ -65,20 +65,20 @@ echo 1 > /proc/sys/net/ipv4/conf/all/log_martians
 /sbin/iptables -A INPUT -p icmp --icmp-type 8 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
 
 # Allow traffic on specified ports
-iptables -A FORWARD -i enp3s0 -o wg1 -p tcp --syn --dport 80 -m conntrack --ctstate NEW -j ACCEPT
-iptables -A FORWARD -i enp3s0 -o wg1 -p tcp --syn --dport 443 -m conntrack --ctstate NEW -j ACCEPT
+/sbin/iptables -A FORWARD -i enp3s0 -o wg1 -p tcp --syn --dport 80 -m conntrack --ctstate NEW -j ACCEPT
+/sbin/iptables -A FORWARD -i enp3s0 -o wg1 -p tcp --syn --dport 443 -m conntrack --ctstate NEW -j ACCEPT
 
 # Allow traffic between wg0 and enp1s0
-iptables -A FORWARD -i wg1 -o enp3s0 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
-iptables -A FORWARD -i wg1 -o enp3s0 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+/sbin/iptables -A FORWARD -i wg1 -o enp3s0 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+/sbin/iptables -A FORWARD -i wg1 -o enp3s0 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
 
 # Forward traffic from enp1s0 to wg0 on specified ports
-iptables -t nat -A PREROUTING -i enp3s0 -p tcp --dport 80 -j DNAT --to-destination 10.7.0.2
-iptables -t nat -A PREROUTING -i enp3s0 -p tcp --dport 443 -j DNAT --to-destination 10.7.0.2
+/sbin/iptables -t nat -A PREROUTING -i enp3s0 -p tcp --dport 80 -j DNAT --to-destination 10.7.0.2
+/sbin/iptables -t nat -A PREROUTING -i enp3s0 -p tcp --dport 443 -j DNAT --to-destination 10.7.0.2
 
 # Forward traffic back to enp1s0 from wg0 on specified ports
-iptables -t nat -A POSTROUTING -o wg1 -p tcp --dport 80 -d 10.7.0.2 -j SNAT --to-source 10.7.0.1
-iptables -t nat -A POSTROUTING -o wg1 -p tcp --dport 443 -d 10.7.0.2 -j SNAT --to-source 10.7.0.1
+/sbin/iptables -t nat -A POSTROUTING -o wg1 -p tcp --dport 80 -d 10.7.0.2 -j SNAT --to-source 10.7.0.1
+/sbin/iptables -t nat -A POSTROUTING -o wg1 -p tcp --dport 443 -d 10.7.0.2 -j SNAT --to-source 10.7.0.1
 
 # Drop all other traffic
 /sbin/iptables -A INPUT -j DROP
