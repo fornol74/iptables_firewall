@@ -1,1 +1,86 @@
+#!/bin/bash
+#
+# iptables example configuration script
 
+# Drop ICMP echo-request messages sent to broadcast or multicast addresses
+echo 1 > /proc/sys/net/ipv4/icmp_echo_ignore_broadcasts
+
+# Drop source routed packets
+echo 0 > /proc/sys/net/ipv4/conf/all/accept_source_route
+ 
+# Enable TCP SYN cookie protection from SYN floods
+echo 1 > /proc/sys/net/ipv4/tcp_syncookies
+ 
+# Don't accept ICMP redirect messages
+echo 0 > /proc/sys/net/ipv4/conf/all/accept_redirects
+ 
+# Don't send ICMP redirect messages
+echo 0 > /proc/sys/net/ipv4/conf/all/send_redirects
+ 
+# Enable source address spoofing protection
+echo 1 > /proc/sys/net/ipv4/conf/all/rp_filter
+ 
+# Log packets with impossible source addresses
+echo 1 > /proc/sys/net/ipv4/conf/all/log_martians
+ 
+# Flush all chains
+/sbin/iptables --flush
+ 
+# Allow unlimited traffic on the loopback interface
+/sbin/iptables -A INPUT -i lo -j ACCEPT
+/sbin/iptables -A OUTPUT -o lo -j ACCEPT
+ 
+# Set default policies
+/sbin/iptables --policy INPUT DROP
+/sbin/iptables --policy OUTPUT DROP
+/sbin/iptables --policy FORWARD DROP
+ 
+# Previously initiated and accepted exchanges bypass rule checking
+# Allow unlimited outbound traffic
+/sbin/iptables -A INPUT -m state --state ESTABLISHED,RELATED -j ACCEPT
+/sbin/iptables -A OUTPUT -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+ 
+#Ratelimit SSH for attack protection
+/sbin/iptables -A INPUT -p tcp --dport 22 -m state --state NEW -m recent --update --seconds 60 --hitcount 4 -j DROP
+/sbin/iptables -A INPUT -p tcp --dport 22 -m state --state NEW -m recent --set
+/sbin/iptables -A INPUT -p tcp --dport 22 -m state --state NEW -j ACCEPT
+ 
+# Allow certain ports to be accessible from the outside
+/sbin/iptables -A INPUT -p tcp --dport 25565 -m state --state NEW -j ACCEPT  #Minecraft
+/sbin/iptables -A INPUT -p tcp --dport 8123 -m state --state NEW -j ACCEPT   #Dynmap plugin
+
+# Other rules for future use if needed.  Uncomment to activate
+/sbin/iptables -A INPUT -p tcp --dport 80 -m state --state NEW -j ACCEPT    # http
+/sbin/iptables -A INPUT -p udp --dport 80 -m state --state NEW -j ACCEPT    # http
+/sbin/iptables -A INPUT -p tcp --dport 443 -m state --state NEW -j ACCEPT   # https
+/sbin/iptables -A INPUT -p udp --dport 443 -m state --state NEW -j ACCEPT   # https
+/sbin/iptables -A INPUT -p tcp --dport 5000 -m state --state NEW -j ACCEPT   # ssh
+/sbin/iptables -A INPUT -p udp --dport 5000 -m state --state NEW -j ACCEPT   # ssh
+
+# UDP packet rule.  This is just a random udp packet rule as an example only
+# /sbin/iptables -A INPUT -p udp --dport 5021 -m state --state NEW -j ACCEPT
+
+# Allow pinging of your server
+/sbin/iptables -A INPUT -p icmp --icmp-type 8 -m state --state NEW,ESTABLISHED,RELATED -j ACCEPT
+
+# Allow traffic on specified ports
+iptables -A FORWARD -i enp3s0 -o wg1 -p tcp --syn --dport 80 -m conntrack --ctstate NEW -j ACCEPT
+iptables -A FORWARD -i enp3s0 -o wg1 -p tcp --syn --dport 443 -m conntrack --ctstate NEW -j ACCEPT
+
+# Allow traffic between wg0 and enp1s0
+iptables -A FORWARD -i wg1 -o enp3s0 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -A FORWARD -i wg1 -o enp3s0 -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
+# Forward traffic from enp1s0 to wg0 on specified ports
+iptables -t nat -A PREROUTING -i enp3s0 -p tcp --dport 80 -j DNAT --to-destination 10.7.0.2
+iptables -t nat -A PREROUTING -i enp3s0 -p tcp --dport 443 -j DNAT --to-destination 10.7.0.2
+
+# Forward traffic back to enp1s0 from wg0 on specified ports
+iptables -t nat -A POSTROUTING -o wg1 -p tcp --dport 80 -d 10.7.0.2 -j SNAT --to-source 10.7.0.1
+iptables -t nat -A POSTROUTING -o wg1 -p tcp --dport 443 -d 10.7.0.2 -j SNAT --to-source 10.7.0.1
+
+# Drop all other traffic
+/sbin/iptables -A INPUT -j DROP
+
+# print the activated rules to the console when script is completed
+/sbin/iptables -nL
